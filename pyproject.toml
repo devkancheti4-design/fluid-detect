@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fluid-detect"
+version = "0.1.0"
+description = "A precaution: record what your code looked like when it was right, and be told the moment its shape moves."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = ["regression", "guard", "static-analysis", "proven", "branchless"]
+
+[project.scripts]
+fluid-detect = "fluid_detect.cli:main"
+
+[project.urls]
+Source = "https://github.com/devkancheti4-design/fluid-detect"
+
+[tool.setuptools.packages.find]
+include = ["fluid_detect*"]

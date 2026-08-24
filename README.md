@@ -1,5 +1,61 @@
 # fluid-detect
 
+**A precaution.** Record what your code looked like when it was right; be told
+the moment its shape moves.
+
+```bash
+pip install -e .
+
+fluid-detect record src/     # tests are green -- remember this
+fluid-detect check  src/     # has anything moved?
+```
+
+```
+src/mod.py:2: shape moved (act 9)  if x > t:
+
+1 line(s) moved since the baseline.
+```
+
+Exit code 1 when something moved, so it drops straight into CI or a pre-commit
+hook. No model, no network, no dependencies.
+
+## Measured
+
+On 4,000 real lines from six packages this code had never seen:
+
+```
+unchanged code, false alarms :  0 of 4,000   (0.00%)
+
+mutation           planted   caught   recall
+cmp_strictness          17       17   100.0%
+off_by_one             375      375   100.0%
+additive_flip           45       44    97.8%
+mul_div_flip             6        0     0.0%   <- * and / share a bit
+---------------------------------------------
+TOTAL                  443      436    98.4%
+```
+
+Reproduce with `python3 tests/test_guard.py` against whatever packages you have
+installed. The `mul_div_flip` miss is real and is stated rather than hidden:
+eight bits of signature cannot give every operator its own bit, and `*` and `/`
+share one. **The honest claim is "it catches any change that moves the
+signature" — and the signature is published, in `SIG_BITS`.**
+
+## It is a pair
+
+| | repairs | notices |
+|---|---|---|
+| [fluid-router](https://github.com/devkancheti4-design/fluid-router) | **the debugger** — fixes what broke | |
+| **fluid-detect** | | **the precaution** — 1.8 ns per check |
+
+The debugger has to infer what was expected. The precaution does not: expected
+is simply what the code looked like when the tests passed. That difference is
+why this one needs no guessing to be correct.
+
+---
+
+## The kernel underneath
+
 Two proven kernels in series. One 32-bit word in, one act out.
 
 ```
@@ -152,4 +208,20 @@ make asm      the emitted arm64, so you can check the claims above yourself
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
-# fluid-detect
+
+## Commands
+
+```
+fluid-detect record PATHS      remember the shape (writes .fluid-detect.json)
+fluid-detect check  PATHS      exit 1 if anything moved
+
+make prove                     all 4,294,967,296 inputs, C kernel
+make bench                     throughput of the chain
+python3 tests/test_kernel_parity.py   the Python mirror vs the compiled kernel
+python3 tests/test_guard.py           the recall/false-alarm measurement
+```
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
+

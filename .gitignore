@@ -1,2 +1,6 @@
 build/
 *.o
+.venv/
+*.egg-info/
+__pycache__/
+.fluid-detect.json
