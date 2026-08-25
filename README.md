@@ -43,41 +43,54 @@ tool had never seen — and deliberately broke them, one small change at a time.
 That matters more than anything else. A tool that cries wolf gets turned off in
 a week.
 
-**On code I did change, it noticed 436 out of 443 times.**
+**On code I did change, it noticed 438 out of 443 times.**
 
 | the kind of change | how many I made | how many it caught |
 |---|---|---|
-| `>=` became `>` | 17 | **all 17** |
+| `>=` became `>` | 17 | 15 |
 | a number changed by one | 375 | **all 375** |
-| `+` became `-` | 45 | 44 |
-| `*` became `/` | 6 | **0 — see below** |
+| `+` became `-` | 45 | 42 |
+| `*` became `/` | 6 | **all 6** |
 
-You can run this yourself: `python3 tests/test_guard.py`
+Run it yourself: `python3 tests/test_guard.py`
 
----
+## What an outside reviewer found, and what it cost me
 
-## What it misses, and why I'm telling you
+Someone read the first version and said, in effect: *this records whether a line
+has a comparison or an arithmetic operator, warns if that changes, and breaks
+the moment you insert a line — nothing `git diff` cannot do better.*
 
-**It misses `*` becoming `/`.** Six times out of six.
+**They were right on every count, and one of the causes was worse than they
+knew.** Both problems are fixed; both are recorded here rather than quietly
+corrected.
 
-The tool describes each line using eight yes/no facts — does it have a `>=`,
-does it have a `+`, and so on. Eight facts, eight slots. There wasn't a spare
-slot for multiply and divide, so they share one, and swapping them doesn't
-change the description.
+**1. Inserting a line broke it.** Lines were compared by position, so adding one
+comment at the top reported every following line as changed — measured at **5
+false alarms from a single inserted comment.** Lines are now *aligned* with
+`difflib` before comparison, so insertions, deletions and reorderings shift
+nothing. `tests/test_line_shift.py` is the regression test.
 
-That's a real hole and it isn't going away by itself. So the honest sentence is
-not *"it catches everything"* — it's **"it catches any change that alters the
-description, and here is exactly what the description contains"** (it's in the
-code as `SIG_BITS`, eight lines, readable in a minute).
+**2. The deeper cause: the layout threw away what the kernel routes on.** The
+deciding kernel routes on the low four bits of the difference. The first layout
+put arithmetic operators in the *high* four bits — the detector saw them, the
+router never did. Every arithmetic change collapsed to one indistinguishable
+answer, and `*` vs `/` was invisible entirely (0 of 6 caught).
 
-**Two other things worth knowing:**
+The variant now lives in the low nibble, so each kind of change gets its own
+answer:
 
-- It tells you something moved. It does not fix it. (Its sibling does that —
-  see below.)
-- It compares against the snapshot you saved. If you save a snapshot while the
-  code is already broken, it will faithfully protect the broken version.
+```
+change              answer
+no change                0
+comparison changed       5
++ became -               6
+* became /               8
+a literal changed       12
+```
 
----
+That is the difference between *"something moved"* — which `git diff` genuinely
+does better — and *"something moved, and here is which kind of change it was"*,
+which is the part a repair tool can act on.
 
 ## Why you can trust the part that does the deciding
 
